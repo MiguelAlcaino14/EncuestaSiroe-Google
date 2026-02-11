@@ -1,0 +1,5 @@
+{
+  "name": "Encuesta conocimiento Siroe",
+  "description": "An application to assess knowledge in Artificial Intelligence for different professional profiles, with course recommendations from Platzi.",
+  "requestFramePermissions": []
+}
