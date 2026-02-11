@@ -25,7 +25,7 @@
     }
   },
   "files": [
-    "./index.tsx"
+    "src/index.tsx"
   ],
   "angularCompilerOptions": {
     "disableTypeScriptVersionCheck": true
