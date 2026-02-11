@@ -32,8 +32,8 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
 
           <form (submit)="handleLogin($event)" class="space-y-4 fade-in">
             <div>
-              <label for="loginIdentifier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo o Email de Admin</label>
-              <input type="text" id="loginIdentifier" name="loginIdentifier" [(ngModel)]="loginIdentifier" required class="mt-1 block w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" placeholder="Ej: Juan Pérez o admin@siroe.cl">
+              <label for="loginIdentifier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo</label>
+              <input type="text" id="loginIdentifier" name="loginIdentifier" [(ngModel)]="loginIdentifier" required class="mt-1 block w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" placeholder="Ej: Juan Pérez">
             </div>
             <button type="submit" class="w-full mt-4 px-8 py-3 bg-siroe-maroon text-white font-bold rounded-lg shadow-md hover:bg-opacity-90 transition-all disabled:bg-gray-400">
               Ingresar
@@ -177,7 +177,7 @@ export class AppComponent {
     event.preventDefault();
     const identifier = this.loginIdentifier().trim();
     if (!identifier) {
-      alert('Por favor, ingresa tu nombre o correo electrónico.');
+      alert('Por favor, ingresa tu nombre.');
       return;
     }
 
