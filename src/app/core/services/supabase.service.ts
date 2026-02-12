@@ -5,8 +5,9 @@ import { generalSurvey, devSurvey, aiToolsSurvey } from '../data/surveys.data';
 
 // FIX: Hardcoded Supabase credentials to resolve runtime error.
 // The execution environment does not support `process.env` for these variables.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
+// Forzamos a TS a aceptar la propiedad 'env'
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseKey = (import.meta as any).env.VITE_SUPABASE_KEY;
 
 
 @Injectable({
