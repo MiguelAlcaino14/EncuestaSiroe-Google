@@ -5,7 +5,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { ModalService } from '../../core/services/modal.service';
 import { SurveyResult, Survey } from '../../core/models/survey.interface';
 import * as d3 from 'd3';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 @Component({
@@ -500,59 +500,64 @@ export class DashboardComponent implements OnInit {
   }
 
   private generatePdfDocument(results: SurveyResult[]): jsPDF {
-    const doc = new jsPDF();
-    let finalY = 0;
+  const doc = new jsPDF();
+  let finalY = 0;
 
-    doc.setFontSize(18);
-    doc.text('Resultados de Evaluaciones - Siroe', 14, 22);
+  doc.setFontSize(18);
+  doc.text('Resultados de Evaluaciones - Siroe', 14, 22);
 
-    results.forEach((result, index) => {
-        const pageHeight = doc.internal.pageSize.height;
-        const startY = (index === 0) ? 30 : finalY + 15;
-        
-        if (startY > pageHeight - 60) { // Margin check for new entry
-            doc.addPage();
-            finalY = 0;
+  results.forEach((result, index) => {
+    const pageHeight = doc.internal.pageSize.height;
+    // Ajuste de posición inicial
+    const startY = (index === 0) ? 30 : finalY + 15;
+    
+    if (startY > pageHeight - 60) {
+      doc.addPage();
+      finalY = 20; // Reiniciamos en la nueva página con margen
+    }
+
+    const effectiveStartY = (index === 0) ? 30 : finalY + 15;
+
+    doc.setFontSize(14);
+    doc.text(`${result.participantName} - ${result.surveyTitle}`, 14, effectiveStartY);
+
+    doc.setFontSize(10);
+    const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
+    doc.text(`Puntaje: ${result.score}  |  Categoría: ${result.category}  |  Fecha: ${date}`, 14, effectiveStartY + 6);
+
+    if (result.answers_summary && result.answers_summary.length > 0) {
+      const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta']];
+      const body = result.answers_summary.map(a => [
+        a.question,
+        a.selectedOption,
+        a.correctOption ?? 'N/A'
+      ]);
+
+      // LLAMADA CORREGIDA: Usamos la función importada directamente
+      autoTable(doc, {
+        startY: effectiveStartY + 10,
+        head: head,
+        body: body,
+        theme: 'striped',
+        headStyles: { fillColor: [128, 0, 32] }, // Siroe maroon
+        didDrawPage: (data) => {
+          finalY = data.cursor?.y ?? 0;
         }
+      });
 
-        const effectiveStartY = (index === 0) ? 30 : finalY + 15;
+      // FORMA SEGURA DE OBTENER EL ÚLTIMO Y: 
+      // En lugar de lastAutoTable, usamos el valor actualizado por didDrawPage
+      // o el estado interno si el anterior falla:
+      finalY = (doc as any).lastAutoTable?.finalY || finalY;
 
-        doc.setFontSize(14);
-        doc.text(`${result.participantName} - ${result.surveyTitle}`, 14, effectiveStartY);
+    } else {
+      doc.text('No hay un resumen de respuestas disponible para esta evaluación.', 14, effectiveStartY + 12);
+      finalY = effectiveStartY + 12;
+    }
+  });
 
-        doc.setFontSize(10);
-        const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
-        doc.text(`Puntaje: ${result.score}  |  Categoría: ${result.category}  |  Fecha: ${date}`, 14, effectiveStartY + 6);
-
-        if (result.answers_summary && result.answers_summary.length > 0) {
-            const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta']];
-            const body = result.answers_summary.map(a => [
-                a.question,
-                a.selectedOption,
-                a.correctOption ?? 'N/A'
-            ]);
-
-            autoTable(doc, {
-                startY: effectiveStartY + 10,
-                head: head,
-                body: body,
-                theme: 'striped',
-                headStyles: { fillColor: [128, 0, 32] }, // Siroe maroon
-                didDrawPage: (data) => {
-                    finalY = data.cursor?.y ?? 0;
-                }
-            });
-            // @ts-ignore
-            finalY = doc.lastAutoTable.finalY;
-
-        } else {
-            doc.text('No hay un resumen de respuestas disponible para esta evaluación.', 14, effectiveStartY + 12);
-            finalY = effectiveStartY + 12;
-        }
-    });
-
-    return doc;
-  }
+  return doc;
+}
 
   exportResultsToPdf() {
       const results = this.filteredResults();
