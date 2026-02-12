@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Survey, SurveyResult } from '../../core/models/survey.interface';
+import { Survey, SurveyResult, AnswerSummaryItem } from '../../core/models/survey.interface';
 import { SupabaseService } from '../../core/services/supabase.service';
 
 @Component({
@@ -36,7 +36,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
                 [class.dark:border-red-500]="questionFeedback() && !questionFeedback()?.correct && selectedAnswer() === i"
                 [class.dark:bg-red-900/30]="questionFeedback() && !questionFeedback()?.correct && selectedAnswer() === i"
                 >
-                <span class="font-mono text-siroe-maroon mr-3">{{ 'ABC'[i] }}.</span> {{ option }}
+                <span class="font-mono text-siroe-maroon mr-3">{{ 'ABCDE'[$index] }}.</span> {{ option }}
               </button>
             }
           </div>
@@ -226,12 +226,34 @@ export class SurveyComponent {
 
   async finishSurvey() {
     this.calculateScore();
-    await this.saveResult();
+    const summary = this.generateAnswersSummary();
+    await this.saveResult(summary);
     this.isFinished.set(true);
   }
 
   onFinish() {
     this.surveyCompleted.emit();
+  }
+
+  generateAnswersSummary(): AnswerSummaryItem[] {
+    const summary: AnswerSummaryItem[] = [];
+    const questions = this.currentQuestions();
+    const userAnswers = this.answers();
+
+    userAnswers.forEach((answerIndex, questionIndex) => {
+        const question = questions[questionIndex];
+        const selectedOption = question.options[answerIndex];
+        const correctOption = question.answer !== -1 ? question.options[question.answer] : null;
+        const isCorrect = question.answer !== -1 ? answerIndex === question.answer : true;
+
+        summary.push({
+            question: question.text,
+            selectedOption: selectedOption,
+            correctOption: correctOption,
+            isCorrect: isCorrect
+        });
+    });
+    return summary;
   }
 
   calculateScore() {
@@ -260,7 +282,7 @@ export class SurveyComponent {
     else this.finalCategory.set('Básico');
   }
 
-  async saveResult() {
+  async saveResult(summary: AnswerSummaryItem[]) {
     if (this.finalScore() === null || this.finalCategory() === null) return;
 
     const result: SurveyResult = {
@@ -268,6 +290,7 @@ export class SurveyComponent {
       surveyTitle: this.survey().title,
       score: this.finalScore()!,
       category: this.finalCategory()!,
+      answers_summary: summary
     };
     await this.supabaseService.saveResult(result);
   }

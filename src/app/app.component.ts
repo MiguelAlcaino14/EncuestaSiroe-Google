@@ -93,13 +93,18 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="text-3xl font-bold text-siroe-maroon">Catálogo de Evaluaciones</h3>
                         @if (currentUser()?.role === 'admin') {
-                            <button (click)="refreshSurveys()" [disabled]="isRefreshing() || deletingSurveyId() !== null"
-                                    class="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                                    aria-label="Actualizar catálogo">
-                                <svg [class.animate-spin]="isRefreshing()" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0121 12h-3a6 6 0 00-9.43-4.93L4 4zM20 20l-1.5-1.5A9 9 0 013 12h3a6 6 0 009.43 4.93L20 20z" />
-                                </svg>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button (click)="requestNewSurveyCreation()" class="px-4 py-2 bg-siroe-maroon text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-opacity-90 transition-all">
+                                    Crear Evaluación
+                                </button>
+                                <button (click)="refreshSurveys()" [disabled]="isRefreshing() || deletingSurveyId() !== null"
+                                        class="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        aria-label="Actualizar catálogo">
+                                    <svg [class.animate-spin]="isRefreshing()" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0121 12h-3a6 6 0 00-9.43-4.93L4 4zM20 20l-1.5-1.5A9 9 0 013 12h3a6 6 0 009.43 4.93L20 20z" />
+                                    </svg>
+                                </button>
+                            </div>
                         }
                     </div>
                     <p class="text-gray-600 dark:text-gray-400 mb-8">Selecciona una evaluación para comenzar.</p>
@@ -159,6 +164,7 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
                 @case ('dashboard') {
                   <app-dashboard 
                     [surveyToEdit]="editingSurvey()" 
+                    [startInCreateMode]="startDashboardInCreateMode()"
                     (formClosed)="editingSurvey.set(null)">
                   </app-dashboard>
                 }
@@ -185,6 +191,7 @@ export class AppComponent {
   completedSurveys = signal<Set<string>>(new Set());
   isRefreshing = signal(false);
   deletingSurveyId = signal<number | null>(null);
+  startDashboardInCreateMode = signal(false);
 
   // --- COMPUTED SIGNALS ---
   pageTitle = computed(() => {
@@ -241,7 +248,8 @@ export class AppComponent {
   }
 
   async navigateTo(view: 'welcome' | 'dashboard') {
-    if (this.view() === 'dashboard' && view === 'welcome') {
+    if (this.view() === 'dashboard' && view !== 'dashboard') {
+        this.startDashboardInCreateMode.set(false);
         this.editingSurvey.set(null);
     }
     if (view === 'welcome') {
@@ -274,6 +282,12 @@ export class AppComponent {
   
   editSurvey(survey: Survey) {
     this.editingSurvey.set(survey);
+    this.navigateTo('dashboard');
+  }
+
+  requestNewSurveyCreation() {
+    this.editingSurvey.set(null);
+    this.startDashboardInCreateMode.set(true);
     this.navigateTo('dashboard');
   }
 

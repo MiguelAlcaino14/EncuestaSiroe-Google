@@ -5,19 +5,18 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { ModalService } from '../../core/services/modal.service';
 import { SurveyResult, Survey } from '../../core/models/survey.interface';
 import * as d3 from 'd3';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 @Component({
   selector: 'app-dashboard',
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div>
-        <div class="flex justify-between items-center mb-6">
+        <div class="mb-6">
             <h3 class="text-2xl font-bold">
                 {{ view() === 'results' ? 'Resultados de Evaluaciones' : (editingSurveyId() ? 'Editar Evaluación' : 'Crear Nueva Evaluación') }}
             </h3>
-            <button (click)="toggleView()" class="px-4 py-2 bg-siroe-maroon text-white font-semibold rounded-lg shadow-md hover:bg-opacity-90 transition-all">
-                {{ view() === 'results' ? 'Crear Evaluación' : 'Ver Resultados' }}
-            </button>
         </div>
 
         @if(view() === 'results') {
@@ -78,13 +77,18 @@ import * as d3 from 'd3';
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden">
                 <div class="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center">
                     <h4 class="font-bold text-lg">Resultados Recientes</h4>
-                    <div class="flex items-center gap-2">
-                        <label for="surveyFilter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar:</label>
-                        <select id="surveyFilter" (change)="handleFilterChange($event)" class="w-full px-4 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon py-1 max-w-xs">
-                            @for(title of uniqueSurveyTitles(); track title) {
-                                <option [value]="title">{{ title === 'all' ? 'Todas las Evaluaciones' : title }}</option>
-                            }
-                        </select>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <label for="surveyFilter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar:</label>
+                            <select id="surveyFilter" (change)="handleFilterChange($event)" class="w-full px-4 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon py-1 max-w-xs">
+                                @for(title of uniqueSurveyTitles(); track title) {
+                                    <option [value]="title">{{ title === 'all' ? 'Todas las Evaluaciones' : title }}</option>
+                                }
+                            </select>
+                        </div>
+                        <button (click)="exportResultsToPdf()" class="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-700 transition-all">
+                            Exportar a PDF
+                        </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -226,6 +230,7 @@ export class DashboardComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   surveyToEdit = input<Survey | null>(null);
+  startInCreateMode = input(false);
   formClosed = output<void>();
   
   allResults = signal<SurveyResult[]>([]);
@@ -284,6 +289,16 @@ export class DashboardComponent implements OnInit {
     });
 
     effect(() => {
+      if (this.startInCreateMode() && !this.surveyToEdit()) {
+        this.view.set('form');
+        this.editingSurveyId.set(null);
+        this.surveyForm.reset();
+        this.questions.clear();
+        this.addQuestion();
+      }
+    });
+
+    effect(() => {
       if (this.view() === 'results') {
         this.drawCategoryChart();
       }
@@ -301,22 +316,6 @@ export class DashboardComponent implements OnInit {
     ]);
     this.allResults.set(results);
     this.allSurveys.set(surveys);
-  }
-
-  async toggleView() {
-    if (this.view() === 'form') {
-        this.view.set('results');
-        this.editingSurveyId.set(null);
-        this.formClosed.emit();
-        await this.loadDashboardData();
-    } else {
-        this.view.set('form');
-        this.editingSurveyId.set(null);
-        this.formClosed.emit();
-        this.surveyForm.reset();
-        this.questions.clear();
-        this.addQuestion();
-    }
   }
 
   handleFilterChange(event: Event) {
@@ -417,17 +416,21 @@ export class DashboardComponent implements OnInit {
       });
       return;
     }
+    
     const formValue = this.surveyForm.getRawValue();
-    const surveyData: Omit<Survey, 'id' | 'type'> & { type: 'custom' } = {
-      ...formValue,
-      questions: formValue.questions.map((q: any) => ({
-          ...q,
-          answer: parseInt(q.answer, 10),
-      })),
-      type: 'custom',
+    const editingId = this.editingSurveyId();
+    const originalSurvey = editingId ? this.allSurveys().find(s => s.id === editingId) : null;
+
+    const surveyData = {
+        title: formValue.title,
+        description: formValue.description,
+        questions: formValue.questions.map((q: any) => ({
+            ...q,
+            answer: parseInt(q.answer, 10),
+        })),
+        type: originalSurvey ? originalSurvey.type : 'custom',
     };
     
-    const editingId = this.editingSurveyId();
     let error;
     let operation: 'actualizar' | 'guardar' = 'guardar';
 
@@ -436,7 +439,7 @@ export class DashboardComponent implements OnInit {
       const result = await this.supabaseService.updateSurvey(editingId, surveyData);
       error = result.error;
     } else {
-      const result = await this.supabaseService.saveSurvey(surveyData);
+      const result = await this.supabaseService.saveSurvey(surveyData as any);
       error = result.error;
     }
 
@@ -459,6 +462,68 @@ export class DashboardComponent implements OnInit {
       this.questions.clear();
       await this.loadDashboardData();
     }
+  }
+
+  exportResultsToPdf() {
+    const results = this.filteredResults();
+    if (results.length === 0) {
+        this.modalService.alert({ title: 'No hay datos', message: 'No hay resultados en la vista actual para exportar.' });
+        return;
+    }
+
+    const doc = new jsPDF();
+    let finalY = 0;
+
+    doc.setFontSize(18);
+    doc.text('Resultados de Evaluaciones - Siroe', 14, 22);
+
+    results.forEach((result, index) => {
+        const pageHeight = doc.internal.pageSize.height;
+        const startY = (index === 0) ? 30 : finalY + 15;
+        
+        if (startY > pageHeight - 60) { // Margin check for new entry
+            doc.addPage();
+            finalY = 0;
+        }
+
+        const effectiveStartY = (index === 0) ? 30 : finalY + 15;
+
+        doc.setFontSize(14);
+        doc.text(`${result.participantName} - ${result.surveyTitle}`, 14, effectiveStartY);
+
+        doc.setFontSize(10);
+        const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
+        doc.text(`Puntaje: ${result.score}  |  Categoría: ${result.category}  |  Fecha: ${date}`, 14, effectiveStartY + 6);
+
+        if (result.answers_summary && result.answers_summary.length > 0) {
+            const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta']];
+            const body = result.answers_summary.map(a => [
+                a.question,
+                a.selectedOption,
+                a.correctOption ?? 'N/A'
+            ]);
+
+            autoTable(doc, {
+                startY: effectiveStartY + 10,
+                head: head,
+                body: body,
+                theme: 'striped',
+                headStyles: { fillColor: [128, 0, 32] }, // Siroe maroon
+                didDrawPage: (data) => {
+                    finalY = data.cursor?.y ?? 0;
+                }
+            });
+            // @ts-ignore
+            finalY = doc.lastAutoTable.finalY;
+
+        } else {
+            doc.text('No hay un resumen de respuestas disponible para esta evaluación.', 14, effectiveStartY + 12);
+            finalY = effectiveStartY + 12;
+        }
+    });
+
+    const filterText = this.surveyFilter() === 'all' ? 'todos' : this.surveyFilter();
+    doc.save(`resultados_${filterText}_${new Date().toISOString().slice(0,10)}.pdf`);
   }
 
   private drawCategoryChart(): void {
@@ -518,8 +583,9 @@ export class DashboardComponent implements OnInit {
             
     legendItems.append('span')
         .text((d: { name: string; value: number }) => {
-          const percentage = total > 0 ? ((d.value / total) * 100).toFixed(0) : 0;
-          return `${d.name}: ${d.value} (${percentage}%)`;
+          // FIX: Ensure toFixed is called on a number to prevent type errors.
+          const percentageNumber = total > 0 ? (d.value / total) * 100 : 0;
+          return `${d.name}: ${d.value} (${percentageNumber.toFixed(0)}%)`;
         });
   }
 }

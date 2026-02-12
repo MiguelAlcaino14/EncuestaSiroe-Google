@@ -15,6 +15,13 @@ export interface Survey {
   questions: Question[];
 }
 
+export interface AnswerSummaryItem {
+  question: string;
+  selectedOption: string;
+  correctOption: string | null;
+  isCorrect: boolean;
+}
+
 export interface SurveyResult {
   id?: number;
   created_at?: string;
@@ -22,6 +29,7 @@ export interface SurveyResult {
   surveyTitle: string;
   score: number;
   category: string;
+  answers_summary?: AnswerSummaryItem[];
 }
 
 export interface User {
