@@ -6,8 +6,8 @@ import { generalSurvey, devSurvey, aiToolsSurvey } from '../data/surveys.data';
 // For Netlify deployment, set these variables in your site's "Build & deploy" settings:
 // - SUPABASE_URL: Your Supabase project URL.
 // - SUPABASE_KEY: Your Supabase project anon key.
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabaseUrl = 'https://qzradcsnjpuoyfdzvlgb.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6cmFkY3NuanB1b3lmZHp2bGdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzg1OTAsImV4cCI6MjA4NTg1NDU5MH0.xT7HjOgGoZCSbYSHKBOEX9PzvUZV3cMPCK8i-VDUR2c';
 
 
 @Injectable({
