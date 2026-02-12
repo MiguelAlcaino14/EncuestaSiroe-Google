@@ -6,7 +6,7 @@
     "app": {
       "projectType": "application",
       "root": "",
-      "sourceRoot": "src",
+      "sourceRoot": "./",
       "prefix": "app",
       "architect": {
         "build": {
@@ -16,8 +16,7 @@
               "base": "./dist",
               "browser": "."
             },
-            "index": "src/index.html",
-            "browser": "src/index.tsx",
+            "browser": "index.tsx",
             "tsConfig": "tsconfig.json"
           },
           "configurations": {

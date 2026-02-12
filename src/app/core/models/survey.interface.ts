@@ -1,11 +1,19 @@
 export interface Question {
+  id?: number;
   text: string;
   options: string[];
-  correctAnswerIndex: number;
+  answer: number; // The index of the correct option, -1 for diagnostic
+  difficulty: 'Básico' | 'Intermedio' | 'Avanzado' | 'Diagnóstico';
   explanation: string;
 }
 
-export type Profile = 'dev' | 'general';
+export interface Survey {
+  id?: number;
+  title: string;
+  description: string;
+  type: 'general' | 'tools' | 'dev' | 'custom';
+  questions: Question[];
+}
 
 export interface SurveyResult {
   id?: number;

@@ -1,16 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { User, Profile } from './core/models/survey.interface';
+import { User, Survey } from './core/models/survey.interface';
 import { SupabaseService } from './core/services/supabase.service';
 import { SurveyComponent } from './features/survey/survey.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { ModalService } from './core/services/modal.service';
+import { ModalComponent } from './shared/modal/modal.component';
 
 const ADMIN_EMAIL = 'admin@siroe.cl';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, SurveyComponent, DashboardComponent],
+  imports: [CommonModule, FormsModule, SurveyComponent, DashboardComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -20,6 +22,13 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   `,
   ],
@@ -32,8 +41,8 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
 
           <form (submit)="handleLogin($event)" class="space-y-4 fade-in">
             <div>
-              <label for="loginIdentifier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo</label>
-              <input type="text" id="loginIdentifier" name="loginIdentifier" [(ngModel)]="loginIdentifier" required class="mt-1 block w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" placeholder="Ej: Juan Pérez">
+              <label for="loginIdentifier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo o Email de Admin</label>
+              <input type="text" id="loginIdentifier" name="loginIdentifier" [(ngModel)]="loginIdentifier" required class="mt-1 block w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" placeholder="Ej: Juan Pérez o admin@siroe.cl">
             </div>
             <button type="submit" class="w-full mt-4 px-8 py-3 bg-siroe-maroon text-white font-bold rounded-lg shadow-md hover:bg-opacity-90 transition-all disabled:bg-gray-400">
               Ingresar
@@ -57,7 +66,7 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
             }
             <a (click)="navigateTo('welcome')" class="flex items-center px-4 py-3 my-2 rounded-lg cursor-pointer transition-colors" [class.bg-white/20]="view() === 'welcome' || view() === 'survey'" [class.hover:bg-white/10]="!(view() === 'welcome' || view() === 'survey')">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-              Nueva Evaluación
+              Evaluaciones
             </a>
           </nav>
         </aside>
@@ -80,11 +89,22 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
             <div class="fade-in">
               @switch (view()) {
                 @case ('welcome') {
-                  <div class="max-w-2xl mx-auto bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg">
-                    <h3 class="text-3xl font-bold text-center mb-2 text-siroe-maroon">Evaluación de Conocimientos en IA</h3>
-                    <p class="text-center text-gray-600 dark:text-gray-400 mb-8">Selecciona tu perfil para comenzar.</p>
+                  <div class="max-w-4xl mx-auto bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-3xl font-bold text-siroe-maroon">Catálogo de Evaluaciones</h3>
+                        @if (currentUser()?.role === 'admin') {
+                            <button (click)="refreshSurveys()" [disabled]="isRefreshing() || deletingSurveyId() !== null"
+                                    class="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                    aria-label="Actualizar catálogo">
+                                <svg [class.animate-spin]="isRefreshing()" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0121 12h-3a6 6 0 00-9.43-4.93L4 4zM20 20l-1.5-1.5A9 9 0 013 12h3a6 6 0 009.43 4.93L20 20z" />
+                                </svg>
+                            </button>
+                        }
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 mb-8">Selecciona una evaluación para comenzar.</p>
 
-                    @if (completedSurveys().has('general') && completedSurveys().has('dev')) {
+                    @if (allSurveysCompleted()) {
                       <div class="text-center p-6 bg-green-50 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
                         <h4 class="font-bold text-lg text-green-800 dark:text-green-300">¡Felicidades!</h4>
                         <p class="text-gray-600 dark:text-gray-400 mt-2">
@@ -92,13 +112,28 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
                         </p>
                       </div>
                     } @else {
-                      <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div class="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @for (survey of surveys(); track (survey.id ?? survey.title)) {
                           <div class="relative">
-                            <button (click)="startSurvey('general')" [disabled]="completedSurveys().has('general')" class="w-full p-6 text-left border rounded-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:hover:border-siroe-maroon">
-                              <h4 class="font-bold text-lg text-siroe-maroon">Perfil General</h4>
-                              <p class="text-sm text-gray-500 dark:text-gray-400">Conceptos, ética y aplicación de la IA.</p>
+                            <button (click)="startSurvey(survey)" [disabled]="completedSurveys().has(survey.title) || deletingSurveyId() !== null" class="w-full h-full p-6 text-left border rounded-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:hover:border-siroe-maroon flex flex-col">
+                              <h4 class="font-bold text-lg text-siroe-maroon">{{ survey.title }}</h4>
+                              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 flex-grow">{{ survey.description }}</p>
                             </button>
-                             @if (completedSurveys().has('general')) {
+                             @if (currentUser()?.role === 'admin' && survey.type === 'custom') {
+                                <div class="absolute top-2 right-2 flex gap-2">
+                                    <button (click)="editSurvey(survey)" [disabled]="deletingSurveyId() !== null" class="p-1.5 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-colors disabled:opacity-50" aria-label="Editar encuesta">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                                    </button>
+                                    <button (click)="deactivateSurvey(survey)" [disabled]="deletingSurveyId() !== null" class="p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors disabled:opacity-50 w-7 h-7 flex items-center justify-center" aria-label="Desactivar encuesta">
+                                        @if(deletingSurveyId() === survey.id) {
+                                            <svg class="spinner h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        } @else {
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        }
+                                    </button>
+                                </div>
+                            }
+                             @if (completedSurveys().has(survey.title)) {
                               <div class="absolute inset-0 bg-gray-500/10 dark:bg-gray-900/30 rounded-lg flex items-center justify-center backdrop-blur-sm">
                                 <span class="text-xs font-semibold text-green-600 dark:text-green-400 px-3 py-1 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center">
                                   <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
@@ -107,42 +142,25 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
                               </div>
                              }
                           </div>
-                          <div class="relative">
-                             <button (click)="startSurvey('dev')" [disabled]="!completedSurveys().has('general') || completedSurveys().has('dev')" class="w-full p-6 text-left border rounded-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:hover:border-siroe-maroon">
-                              <h4 class="font-bold text-lg text-siroe-maroon">Perfil Developer</h4>
-                              <p class="text-sm text-gray-500 dark:text-gray-400">Algoritmos, frameworks y MLOps.</p>
-                             </button>
-                              @if (completedSurveys().has('dev')) {
-                                <div class="absolute inset-0 bg-gray-500/10 dark:bg-gray-900/30 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                                  <span class="text-xs font-semibold text-green-600 dark:text-green-400 px-3 py-1 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center">
-                                    <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
-                                    Completado
-                                  </span>
-                                </div>
-                              } @else if (!completedSurveys().has('general')) {
-                                <div class="absolute inset-0 bg-gray-500/10 dark:bg-gray-900/30 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                                  <span class="text-xs font-semibold text-red-600 dark:text-red-400 px-3 py-1 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                    Completa la General
-                                  </span>
-                                </div>
-                               }
-                          </div>
-                        </div>
+                        }
+                      </div>
                     }
                   </div>
                 }
                 @case ('survey') {
-                   @if(currentUser(); as user) {
+                   @if(currentUser() && selectedSurvey()) {
                     <app-survey 
-                      [profile]="selectedSurveyType()!" 
-                      [participantName]="user.name"
+                      [survey]="selectedSurvey()!" 
+                      [participantName]="currentUser()!.name"
                       (surveyCompleted)="onSurveyFinished()">
                     </app-survey>
                    }
                 }
                 @case ('dashboard') {
-                  <app-dashboard></app-dashboard>
+                  <app-dashboard 
+                    [surveyToEdit]="editingSurvey()" 
+                    (formClosed)="editingSurvey.set(null)">
+                  </app-dashboard>
                 }
               }
             </div>
@@ -150,26 +168,38 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
         </main>
       </div>
     }
+    <app-modal></app-modal>
   `,
 })
 export class AppComponent {
   private supabaseService: SupabaseService = inject(SupabaseService);
+  private modalService: ModalService = inject(ModalService);
 
   // --- STATE SIGNALS ---
   currentUser = signal<User | null>(null);
   view = signal<'welcome' | 'survey' | 'dashboard'>('welcome');
   loginIdentifier = signal('');
-  selectedSurveyType = signal<Profile | null>(null);
-  completedSurveys = signal<Set<'general' | 'dev'>>(new Set());
+  surveys = signal<Survey[]>([]);
+  selectedSurvey = signal<Survey | null>(null);
+  editingSurvey = signal<Survey | null>(null);
+  completedSurveys = signal<Set<string>>(new Set());
+  isRefreshing = signal(false);
+  deletingSurveyId = signal<number | null>(null);
 
   // --- COMPUTED SIGNALS ---
   pageTitle = computed(() => {
     switch (this.view()) {
       case 'dashboard': return 'Panel de Control';
-      case 'welcome': return 'Nueva Evaluación';
-      case 'survey': return `Evaluación de ${this.selectedSurveyType() === 'dev' ? 'Developer' : 'General'}`;
+      case 'welcome': return 'Evaluaciones Disponibles';
+      case 'survey': return `Evaluación: ${this.selectedSurvey()?.title || ''}`;
       default: return 'Siroe AI Assessment';
     }
+  });
+
+  allSurveysCompleted = computed(() => {
+    const availableSurveys = this.surveys().filter(s => s.type !== 'custom');
+    if (availableSurveys.length === 0) return false;
+    return availableSurveys.every(s => this.completedSurveys().has(s.title));
   });
 
   // --- METHODS ---
@@ -177,17 +207,25 @@ export class AppComponent {
     event.preventDefault();
     const identifier = this.loginIdentifier().trim();
     if (!identifier) {
-      alert('Por favor, ingresa tu nombre.');
+      this.modalService.alert({
+        title: 'Campo Requerido',
+        message: 'Por favor, ingresa tu nombre o correo electrónico.'
+      });
       return;
     }
 
     if (identifier.toLowerCase() === ADMIN_EMAIL) {
       this.currentUser.set({ name: 'Admin', role: 'admin' });
-      this.view.set('dashboard');
+      await this.refreshSurveys();
+      this.view.set('welcome');
     } else {
       this.currentUser.set({ name: identifier, role: 'respondent' });
-      const completed = await this.supabaseService.getUserCompletionStatus(identifier);
+      const [completed, allSurveys] = await Promise.all([
+        this.supabaseService.getUserCompletionStatus(identifier),
+        this.supabaseService.getSurveys()
+      ]);
       this.completedSurveys.set(completed);
+      this.surveys.set(allSurveys);
       this.view.set('welcome');
     }
   }
@@ -196,20 +234,83 @@ export class AppComponent {
     this.currentUser.set(null);
     this.loginIdentifier.set('');
     this.completedSurveys.set(new Set());
-    this.selectedSurveyType.set(null);
+    this.selectedSurvey.set(null);
+    this.editingSurvey.set(null);
+    this.surveys.set([]);
     this.view.set('welcome');
   }
 
-  navigateTo(view: 'welcome' | 'dashboard') {
+  async navigateTo(view: 'welcome' | 'dashboard') {
+    if (this.view() === 'dashboard' && view === 'welcome') {
+        this.editingSurvey.set(null);
+    }
+    if (view === 'welcome') {
+      await this.refreshSurveys();
+    }
     this.view.set(view);
-    this.selectedSurveyType.set(null);
+    this.selectedSurvey.set(null);
   }
 
-  startSurvey(type: Profile) {
-    this.selectedSurveyType.set(type);
+  async refreshSurveys() {
+      this.isRefreshing.set(true);
+      try {
+        const allSurveys = await this.supabaseService.getSurveys();
+        this.surveys.set(allSurveys);
+      } catch (e) {
+        console.error("Failed to refresh surveys", e);
+        this.modalService.alert({
+          title: 'Error de Red',
+          message: 'No se pudo actualizar el catálogo de evaluaciones. Por favor, revisa tu conexión.'
+        });
+      } finally {
+        setTimeout(() => this.isRefreshing.set(false), 300);
+      }
+  }
+
+  startSurvey(survey: Survey) {
+    this.selectedSurvey.set(survey);
     this.view.set('survey');
   }
   
+  editSurvey(survey: Survey) {
+    this.editingSurvey.set(survey);
+    this.navigateTo('dashboard');
+  }
+
+  async deactivateSurvey(survey: Survey) {
+    if (!survey.id) return;
+    
+    const confirmed = await this.modalService.confirm({
+        title: 'Confirmar Desactivación',
+        message: `¿Estás seguro de que quieres desactivar la encuesta "${survey.title}"? No se podrá responder, pero los resultados existentes se conservarán.`,
+        confirmText: 'Sí, Desactivar',
+        cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
+
+    this.deletingSurveyId.set(survey.id);
+    try {
+        const { error } = await this.supabaseService.deactivateSurvey(survey.id);
+        if (error) {
+            let errorMessage = `Error al desactivar la encuesta: ${error.message}`;
+            if (error.code === 'RLS_VIOLATION' || error.message.includes('RLS') || error.message.includes('security policy')) {
+                errorMessage = `Error de Permisos\n\nNo tienes los permisos necesarios para realizar esta acción. Por favor, asegúrate de que la política de seguridad (RLS) en tu tabla "surveys" de Supabase permite la operación de UPDATE para el rol "anon".`;
+            } else if (error.message.includes('ninguna fila')) {
+                errorMessage = `No se Pudo Modificar la Encuesta\n\nLa política de seguridad (RLS) de la base de datos para la operación UPDATE no encontró la encuesta que se intentaba modificar. Asegúrate de que la cláusula "USING" de tu política de RLS permite esta modificación.`;
+            }
+            this.modalService.alert({ title: 'Error', message: errorMessage });
+        } else {
+            this.modalService.alert({ title: 'Éxito', message: 'Encuesta desactivada con éxito.' });
+            await this.refreshSurveys();
+        }
+    } catch (e: any) {
+        this.modalService.alert({ title: 'Error Inesperado', message: `Ocurrió un error inesperado: ${e.message}`});
+    } finally {
+        this.deletingSurveyId.set(null);
+    }
+  }
+
   async onSurveyFinished() {
     const user = this.currentUser();
     if(user) {
@@ -217,5 +318,6 @@ export class AppComponent {
       this.completedSurveys.set(completed);
     }
     this.view.set('welcome');
+    this.selectedSurvey.set(null);
   }
 }
