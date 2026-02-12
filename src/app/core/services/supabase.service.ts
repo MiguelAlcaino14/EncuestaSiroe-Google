@@ -3,9 +3,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SurveyResult, Survey } from '../models/survey.interface';
 import { generalSurvey, devSurvey, aiToolsSurvey } from '../data/surveys.data';
 
-// For Netlify deployment, set these variables in your site's "Build & deploy" settings:
-// - SUPABASE_URL: Your Supabase project URL.
-// - SUPABASE_KEY: Your Supabase project anon key.
+// FIX: Hardcoded Supabase credentials to resolve runtime error.
+// The execution environment does not support `process.env` for these variables.
 const supabaseUrl = 'https://qzradcsnjpuoyfdzvlgb.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6cmFkY3NuanB1b3lmZHp2bGdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzg1OTAsImV4cCI6MjA4NTg1NDU5MH0.xT7HjOgGoZCSbYSHKBOEX9PzvUZV3cMPCK8i-VDUR2c';
 
@@ -17,9 +16,6 @@ export class SupabaseService {
   private supabase: SupabaseClient;
 
   constructor() {
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Supabase URL and Key must be provided as environment variables. Please set SUPABASE_URL and SUPABASE_KEY in your Netlify deployment settings.");
-    }
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
