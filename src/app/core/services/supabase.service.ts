@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SurveyResult, Survey } from '../models/survey.interface';
-import { generalSurvey, devSurvey, aiToolsSurvey } from '../data/surveys.data';
 
 // FIX: Hardcoded Supabase credentials to resolve runtime error.
 // The execution environment does not support `process.env` for these variables.
@@ -35,26 +34,23 @@ export class SupabaseService {
   }
 
   async getSurveys(): Promise<Survey[]> {
-    const staticSurveys: Survey[] = [generalSurvey, devSurvey, aiToolsSurvey];
-    
-    // Solo seleccionamos encuestas donde is_active sea true
     const { data, error } = await this.supabase
       .from('surveys')
-      .select('id, title, description, questions')
-      .eq('is_active', true); // <--- Filtro crucial
+      .select('id, title, description, questions, type')
+      .eq('is_active', true)
+      .order('title', { ascending: true });
 
     if (error) {
-      console.error('Error fetching surveys:', error);
-      return staticSurveys;
+      console.error('Error fetching all surveys from database:', error);
+      return [];
     }
 
-    const customSurveys: Survey[] = (data || []).map((s: any) => ({
+    const surveys: Survey[] = (data || []).map((s: any) => ({
       ...s,
-      type: 'custom' as const,
       questions: Array.isArray(s.questions) ? s.questions : JSON.parse(s.questions || '[]')
     }));
 
-    return [...staticSurveys, ...customSurveys];
+    return surveys;
   }
 
   async saveSurvey(survey: Omit<Survey, 'id' | 'type'> & { type: 'custom' }): Promise<{ error: any }> {
