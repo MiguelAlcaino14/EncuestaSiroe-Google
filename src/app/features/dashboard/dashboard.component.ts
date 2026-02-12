@@ -6,7 +6,7 @@ import { ModalService } from '../../core/services/modal.service';
 import { SurveyResult, Survey } from '../../core/models/survey.interface';
 import * as d3 from 'd3';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable'; // Importación de efecto secundario
 
 @Component({
   selector: 'app-dashboard',
@@ -541,6 +541,17 @@ export class DashboardComponent implements OnInit {
         theme: 'striped',
         headStyles: { fillColor: [128, 0, 32] }, // Siroe maroon
         didDrawPage: (data) => {
+          finalY = data.cursor?.y ?? 0;
+        }
+      });
+      // En lugar de: autoTable(doc, { ... })
+      (doc as any).autoTable({
+        startY: effectiveStartY + 10,
+        head: head,
+        body: body,
+        theme: 'striped',
+        headStyles: { fillColor: [128, 0, 32] },
+        didDrawPage: (data: any) => {
           finalY = data.cursor?.y ?? 0;
         }
       });
