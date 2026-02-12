@@ -155,11 +155,17 @@ import autoTable from 'jspdf-autotable';
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título de la Encuesta</label>
-                            <input type="text" id="title" formControlName="title" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                            <input type="text" id="title" formControlName="title" 
+                                   class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                   [class.border-red-500]="surveyForm.get('title')?.invalid && surveyForm.get('title')?.touched"
+                                   [class.dark:border-red-500]="surveyForm.get('title')?.invalid && surveyForm.get('title')?.touched">
                         </div>
                         <div>
                             <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
-                            <input type="text" id="description" formControlName="description" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                            <input type="text" id="description" formControlName="description" 
+                                   class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                   [class.border-red-500]="surveyForm.get('description')?.invalid && surveyForm.get('description')?.touched"
+                                   [class.dark:border-red-500]="surveyForm.get('description')?.invalid && surveyForm.get('description')?.touched">
                         </div>
                     </div>
 
@@ -175,7 +181,10 @@ import autoTable from 'jspdf-autotable';
 
                                 <div class="mb-4">
                                     <label [for]="'text'+i" class="block text-sm font-medium">Texto de la Pregunta</label>
-                                    <input type="text" [id]="'text'+i" formControlName="text" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                                    <input type="text" [id]="'text'+i" formControlName="text" 
+                                           class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                           [class.border-red-500]="question.get('text')?.invalid && question.get('text')?.touched"
+                                           [class.dark:border-red-500]="question.get('text')?.invalid && question.get('text')?.touched">
                                 </div>
                                 
                                 <h6 class="text-sm font-semibold mb-2">Opciones de Respuesta</h6>
@@ -183,7 +192,10 @@ import autoTable from 'jspdf-autotable';
                                     @for(option of getOptions(i).controls; track $index; let j = $index) {
                                        <div class="flex items-center gap-2">
                                            <label [for]="'option'+i+j" class="text-sm font-medium text-gray-500 dark:text-gray-400">#{{ j + 1 }}</label>
-                                           <input type="text" [id]="'option'+i+j" [formControlName]="j" class="flex-grow w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                                           <input type="text" [id]="'option'+i+j" [formControlName]="j" 
+                                                  class="flex-grow w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                                  [class.border-red-500]="option.invalid && option.touched"
+                                                  [class.dark:border-red-500]="option.invalid && option.touched">
                                            <button type="button" (click)="removeOption(i, j)" [class.invisible]="getOptions(i).length <= 2" class="text-gray-400 hover:text-red-500 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
                                            </button>
@@ -197,7 +209,10 @@ import autoTable from 'jspdf-autotable';
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                                     <div>
                                         <label [for]="'answer'+i" class="block text-sm font-medium">Respuesta Correcta</label>
-                                        <select [id]="'answer'+i" formControlName="answer" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                                        <select [id]="'answer'+i" formControlName="answer" 
+                                                class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                                [class.border-red-500]="question.get('answer')?.invalid && question.get('answer')?.touched"
+                                                [class.dark:border-red-500]="question.get('answer')?.invalid && question.get('answer')?.touched">
                                             <option [ngValue]="null" disabled>Selecciona una respuesta</option>
                                             @for(opt of getOptions(i).controls; track $index; let j = $index) {
                                                 <option [value]="j">Opción {{ j + 1 }}</option>
@@ -206,7 +221,10 @@ import autoTable from 'jspdf-autotable';
                                     </div>
                                     <div>
                                         <label [for]="'difficulty'+i" class="block text-sm font-medium">Dificultad</label>
-                                        <select [id]="'difficulty'+i" formControlName="difficulty" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon">
+                                        <select [id]="'difficulty'+i" formControlName="difficulty" 
+                                                class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon"
+                                                [class.border-red-500]="question.get('difficulty')?.invalid && question.get('difficulty')?.touched"
+                                                [class.dark:border-red-500]="question.get('difficulty')?.invalid && question.get('difficulty')?.touched">
                                             <option>Básico</option>
                                             <option>Intermedio</option>
                                             <option>Avanzado</option>
@@ -216,7 +234,10 @@ import autoTable from 'jspdf-autotable';
 
                                 <div>
                                     <label [for]="'explanation'+i" class="block text-sm font-medium">Explicación</label>
-                                    <textarea [id]="'explanation'+i" formControlName="explanation" class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" rows="2"></textarea>
+                                    <textarea [id]="'explanation'+i" formControlName="explanation" 
+                                              class="mt-1 w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-siroe-maroon focus:border-siroe-maroon" rows="2"
+                                              [class.border-red-500]="question.get('explanation')?.invalid && question.get('explanation')?.touched"
+                                              [class.dark:border-red-500]="question.get('explanation')?.invalid && question.get('explanation')?.touched"></textarea>
                                 </div>
                             </div>
                         }
@@ -226,7 +247,7 @@ import autoTable from 'jspdf-autotable';
                         <button type="button" (click)="addQuestion()" class="px-5 py-2 border border-siroe-maroon text-siroe-maroon font-semibold rounded-lg hover:bg-siroe-maroon/10 transition-colors">
                             Agregar Pregunta
                         </button>
-                        <button type="submit" [disabled]="surveyForm.invalid" class="px-8 py-3 bg-siroe-maroon text-white font-bold rounded-lg shadow-md hover:bg-opacity-90 transition-all disabled:bg-gray-400">
+                        <button type="submit" class="px-8 py-3 bg-siroe-maroon text-white font-bold rounded-lg shadow-md hover:bg-opacity-90 transition-all">
                             {{ editingSurveyId() ? 'Actualizar Encuesta' : 'Guardar Encuesta' }}
                         </button>
                     </div>
