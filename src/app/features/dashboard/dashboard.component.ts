@@ -87,7 +87,7 @@ import autoTable from 'jspdf-autotable';
                             </select>
                         </div>
                         <button (click)="exportResultsToPdf()" class="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-700 transition-all">
-                            Exportar a PDF
+                            Exportar Todo a PDF
                         </button>
                     </div>
                 </div>
@@ -100,11 +100,12 @@ import autoTable from 'jspdf-autotable';
                             <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Puntaje</th>
                             <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoría</th>
                             <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
+                            <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Acciones</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @if (filteredResults().length === 0) {
-                            <tr><td colspan="5" class="text-center py-8 text-gray-500">No hay resultados para el filtro seleccionado.</td></tr>
+                            <tr><td colspan="6" class="text-center py-8 text-gray-500">No hay resultados para el filtro seleccionado.</td></tr>
                         }
                         @for (result of filteredResults(); track result.id) {
                             <tr>
@@ -128,6 +129,19 @@ import autoTable from 'jspdf-autotable';
                                 >{{ result.category }}</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.created_at | date:'short' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button (click)="previewSinglePdf(result)" class="inline-flex items-center text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Vista Previa">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <button (click)="downloadSinglePdf(result)" class="inline-flex items-center text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 ml-4" title="Descargar PDF">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </td>
                             </tr>
                         }
                         </tbody>
@@ -464,13 +478,7 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  exportResultsToPdf() {
-    const results = this.filteredResults();
-    if (results.length === 0) {
-        this.modalService.alert({ title: 'No hay datos', message: 'No hay resultados en la vista actual para exportar.' });
-        return;
-    }
-
+  private generatePdfDocument(results: SurveyResult[]): jsPDF {
     const doc = new jsPDF();
     let finalY = 0;
 
@@ -522,8 +530,28 @@ export class DashboardComponent implements OnInit {
         }
     });
 
-    const filterText = this.surveyFilter() === 'all' ? 'todos' : this.surveyFilter();
-    doc.save(`resultados_${filterText}_${new Date().toISOString().slice(0,10)}.pdf`);
+    return doc;
+  }
+
+  exportResultsToPdf() {
+      const results = this.filteredResults();
+      if (results.length === 0) {
+          this.modalService.alert({ title: 'No hay datos', message: 'No hay resultados en la vista actual para exportar.' });
+          return;
+      }
+      const doc = this.generatePdfDocument(results);
+      const filterText = this.surveyFilter() === 'all' ? 'todos' : this.surveyFilter();
+      doc.save(`resultados_${filterText}_${new Date().toISOString().slice(0,10)}.pdf`);
+  }
+
+  downloadSinglePdf(result: SurveyResult) {
+      const doc = this.generatePdfDocument([result]);
+      doc.save(`resultado_${result.participantName.replace(/ /g, '_')}_${result.surveyTitle.replace(/ /g, '_')}.pdf`);
+  }
+
+  previewSinglePdf(result: SurveyResult) {
+      const doc = this.generatePdfDocument([result]);
+      doc.output('dataurlnewwindow');
   }
 
   private drawCategoryChart(): void {
