@@ -499,49 +499,19 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private async getBase64ImageFromUrl(imageUrl: string): Promise<string> {
-    const res = await fetch(imageUrl);
-    if (!res.ok) {
-        throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
-    }
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-        // If we get here, it's likely a 404 returning an HTML page.
-        // The user needs to be told the asset is missing.
-        throw new Error(`Asset not found or not an image. Expected image at ${imageUrl} but received ${contentType}. Make sure /assets/siroe-logo.png exists.`);
-    }
-
-    const blob = await res.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
   private async generatePdfDocument(results: SurveyResult[]): Promise<jsPDF> {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
     let finalY = 0;
 
-    // --- Header with Logo ---
-    try {
-        const logoBase64 = await this.getBase64ImageFromUrl('/assets/siroe-logo.png');
-        const logoWidth = 35;
-        const logoHeight = 15;
-        doc.addImage(logoBase64, 'PNG', pageWidth - logoWidth - margin, margin, logoWidth, logoHeight);
-    } catch (error) {
-        console.error("Could not load logo for PDF:", error);
-    }
-    
+    // --- Header ---
     doc.setFontSize(18);
     doc.text('Resultados de Evaluaciones', margin, 22);
-
-    finalY = 30;
+    doc.setFontSize(10);
+    doc.setTextColor(150);
+    doc.text('Generado por la Plataforma de Evaluación IA de Siroe', margin, 28);
+    
+    finalY = 35;
 
     results.forEach((result, index) => {
         const survey = this.allSurveys().find(s => s.title === result.surveyTitle);
@@ -553,7 +523,7 @@ export class DashboardComponent implements OnInit {
             finalY = margin;
         }
 
-        const effectiveStartY = (index === 0) ? 30 : finalY + 15;
+        const effectiveStartY = (index === 0) ? finalY : finalY + 15;
         doc.setFontSize(14);
         doc.text(`${result.participantName} - ${result.surveyTitle}`, margin, effectiveStartY);
 
@@ -604,7 +574,6 @@ export class DashboardComponent implements OnInit {
 
         if (result.answers_summary && result.answers_summary.length > 0) {
             const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta', 'Resultado']];
-            // FIX: The `body` data for `jspdf-autotable` was causing a TypeScript error due to incorrect type inference for `cellWidth`. The explicit styling object for each cell has been removed. The new simplified array of strings is type-correct and relies on the default `'auto'` cell width behavior of the library, which was the original intent.
             const body = result.answers_summary.map(a => [
                 a.question,
                 a.selectedOption,
@@ -717,7 +686,6 @@ export class DashboardComponent implements OnInit {
             
     legendItems.append('span')
         .text((d: { name: string; value: number }) => {
-          // FIX: Ensure toFixed is called on a number to prevent type errors.
           const percentageNumber = total > 0 ? (d.value / total) * 100 : 0;
           return `${d.name}: ${d.value} (${percentageNumber.toFixed(0)}%)`;
         });
