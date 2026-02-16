@@ -501,6 +501,16 @@ export class DashboardComponent implements OnInit {
 
   private async getBase64ImageFromUrl(imageUrl: string): Promise<string> {
     const res = await fetch(imageUrl);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
+    }
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+        // If we get here, it's likely a 404 returning an HTML page.
+        // The user needs to be told the asset is missing.
+        throw new Error(`Asset not found or not an image. Expected image at ${imageUrl} but received ${contentType}. Make sure /assets/siroe-logo.png exists.`);
+    }
+
     const blob = await res.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
