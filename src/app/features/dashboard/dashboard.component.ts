@@ -5,8 +5,8 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { ModalService } from '../../core/services/modal.service';
 import { SurveyResult, Survey } from '../../core/models/survey.interface';
 import * as d3 from 'd3';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable'; // Importación de efecto secundario
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 @Component({
   selector: 'app-dashboard',
@@ -499,82 +499,154 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-    private generatePdfDocument(results: SurveyResult[]): jsPDF {
-      const doc = new jsPDF();
-      let finalY = 0;
-    
-      doc.setFontSize(18);
-      doc.text('Resultados de Evaluaciones - Siroe', 14, 22);
-    
-      results.forEach((result, index) => {
-        const pageHeight = doc.internal.pageSize.height;
-        
-        // Calculamos el punto de inicio de esta evaluación
-        let startY = (index === 0) ? 30 : finalY + 15;
-    
-        // Si nos estamos quedando sin espacio, saltamos de página
-        if (startY > pageHeight - 60) {
-          doc.addPage();
-          startY = 20; // Reinicio en la nueva página
-        }
-    
-        // Cabecera del resultado individual
-        doc.setFontSize(14);
-        doc.text(`${result.participantName} - ${result.surveyTitle}`, 14, startY);
-    
-        doc.setFontSize(10);
-        const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
-        doc.text(`Puntaje: ${result.score}  |  Categoría: ${result.category}  |  Fecha: ${date}`, 14, startY + 6);
-    
-        if (result.answers_summary && result.answers_summary.length > 0) {
-          const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta']];
-          const body = result.answers_summary.map(a => [
-            a.question,
-            a.selectedOption,
-            a.correctOption ?? 'N/A'
-          ]);
-    
-          // LLAMADA ÚNICA Y SEGURA PARA PRODUCCIÓN (Evita error TS2304)
-          (doc as any).autoTable({
-            startY: startY + 10,
-            head: head,
-            body: body,
-            theme: 'striped',
-            headStyles: { fillColor: [128, 0, 32] }, // Color Siroe
-            didDrawPage: (data: any) => {
-              finalY = data.cursor?.y ?? 0;
-            }
-          });
-    
-          // Actualizamos finalY desde la tabla
-          finalY = (doc as any).lastAutoTable?.finalY || finalY;
-    
-        } else {
-          doc.text('No hay un resumen de respuestas disponible para esta evaluación.', 14, startY + 12);
-          finalY = startY + 12;
-        }
-      });
-    
-      return doc;
+  private async getBase64ImageFromUrl(imageUrl: string): Promise<string> {
+    const res = await fetch(imageUrl);
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private async generatePdfDocument(results: SurveyResult[]): Promise<jsPDF> {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let finalY = 0;
+
+    // --- Header with Logo ---
+    try {
+        const logoBase64 = await this.getBase64ImageFromUrl('/assets/siroe-logo.png');
+        const logoWidth = 35;
+        const logoHeight = 15;
+        doc.addImage(logoBase64, 'PNG', pageWidth - logoWidth - margin, margin, logoWidth, logoHeight);
+    } catch (error) {
+        console.error("Could not load logo for PDF:", error);
     }
-  exportResultsToPdf() {
+    
+    doc.setFontSize(18);
+    doc.text('Resultados de Evaluaciones', margin, 22);
+
+    finalY = 30;
+
+    results.forEach((result, index) => {
+        const survey = this.allSurveys().find(s => s.title === result.surveyTitle);
+        const estimatedHeight = 45 + (result.answers_summary?.length || 0) * 8;
+        const pageHeight = doc.internal.pageSize.height;
+
+        if (finalY + estimatedHeight > pageHeight - margin) {
+            doc.addPage();
+            finalY = margin;
+        }
+
+        const effectiveStartY = (index === 0) ? 30 : finalY + 15;
+        doc.setFontSize(14);
+        doc.text(`${result.participantName} - ${result.surveyTitle}`, margin, effectiveStartY);
+
+        let tableStartY = effectiveStartY + 8;
+
+        if (survey) {
+            const maxScore = survey.questions
+                .filter(q => q.answer !== -1)
+                .reduce((acc, q) => {
+                    switch(q.difficulty) {
+                        case 'Básico': return acc + 2;
+                        case 'Intermedio': return acc + 4;
+                        case 'Avanzado': return acc + 6;
+                        default: return acc;
+                    }
+                }, 0);
+
+            const accuracy = result.answers_summary && result.answers_summary.length > 0
+                ? (result.answers_summary.filter(a => a.isCorrect).length / result.answers_summary.length) * 100
+                : 0;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
+            doc.text(`Fecha: ${date}`, margin, effectiveStartY + 6);
+            
+            const kpiBlockY = effectiveStartY + 12;
+            doc.setFontSize(11);
+            doc.setTextColor(40);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Indicadores Clave (KPIs)', margin, kpiBlockY);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            
+            const kpiText = `  •  Puntaje Final: ${result.score} / ${maxScore}\n` +
+                            `  •  Precisión: ${accuracy.toFixed(0)}%\n` +
+                            `  •  Nivel Obtenido: ${result.category}`;
+            doc.text(kpiText, margin + 2, kpiBlockY + 5);
+
+            tableStartY = kpiBlockY + 20;
+        } else {
+             doc.setFontSize(10);
+             const date = result.created_at ? new Date(result.created_at).toLocaleDateString('es-CL') : 'N/A';
+             doc.text(`Puntaje: ${result.score}  |  Categoría: ${result.category}  |  Fecha: ${date}`, margin, effectiveStartY + 6);
+             tableStartY = effectiveStartY + 12;
+        }
+
+        if (result.answers_summary && result.answers_summary.length > 0) {
+            const head = [['Pregunta', 'Respuesta Seleccionada', 'Respuesta Correcta', 'Resultado']];
+            // FIX: The `body` data for `jspdf-autotable` was causing a TypeScript error due to incorrect type inference for `cellWidth`. The explicit styling object for each cell has been removed. The new simplified array of strings is type-correct and relies on the default `'auto'` cell width behavior of the library, which was the original intent.
+            const body = result.answers_summary.map(a => [
+                a.question,
+                a.selectedOption,
+                a.correctOption ?? 'N/A',
+                a.isCorrect ? 'Correcta' : 'Incorrecta'
+            ]);
+
+            autoTable(doc, {
+                startY: tableStartY,
+                head: head,
+                body: body,
+                theme: 'striped',
+                headStyles: { fillColor: [128, 0, 32] }, // Siroe maroon
+                didDrawPage: (data) => {
+                    finalY = data.cursor?.y ?? 0;
+                },
+                columnStyles: { 3: { halign: 'center' } },
+                didParseCell: (data) => {
+                    if (data.column.index === 3 && data.cell.section === 'body') {
+                        if (data.cell.raw === 'Correcta') data.cell.styles.textColor = [22, 163, 74];
+                        if (data.cell.raw === 'Incorrecta') data.cell.styles.textColor = [220, 38, 38];
+                    }
+                }
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+        } else {
+            doc.text('No hay un resumen de respuestas disponible para esta evaluación.', margin, tableStartY);
+            finalY = tableStartY + 5;
+        }
+    });
+
+    return doc;
+  }
+
+  async exportResultsToPdf() {
       const results = this.filteredResults();
       if (results.length === 0) {
           this.modalService.alert({ title: 'No hay datos', message: 'No hay resultados en la vista actual para exportar.' });
           return;
       }
-      const doc = this.generatePdfDocument(results);
+      const doc = await this.generatePdfDocument(results);
       const filterText = this.surveyFilter() === 'all' ? 'todos' : this.surveyFilter();
       doc.save(`resultados_${filterText}_${new Date().toISOString().slice(0,10)}.pdf`);
   }
 
-  downloadSinglePdf(result: SurveyResult) {
-      const doc = this.generatePdfDocument([result]);
+  async downloadSinglePdf(result: SurveyResult) {
+      const doc = await this.generatePdfDocument([result]);
       doc.save(`resultado_${result.participantName.replace(/ /g, '_')}_${result.surveyTitle.replace(/ /g, '_')}.pdf`);
   }
 
-  previewSinglePdf(result: SurveyResult) {
-      const doc = this.generatePdfDocument([result]);
+  async previewSinglePdf(result: SurveyResult) {
+      const doc = await this.generatePdfDocument([result]);
       doc.output('dataurlnewwindow');
   }
 

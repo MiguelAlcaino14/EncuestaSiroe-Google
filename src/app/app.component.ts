@@ -36,6 +36,7 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
     @if (!currentUser()) {
       <div class="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
         <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <img src="/assets/logo-siroe.png" alt="Logo Siroe" class="mx-auto h-12 mb-4">
           <h1 class="text-3xl font-bold text-center text-siroe-maroon mb-2">SIROE</h1>
           <p class="text-center text-gray-600 dark:text-gray-400 mb-8">Plataforma de Evaluación IA</p>
 
@@ -54,8 +55,8 @@ const ADMIN_EMAIL = 'admin@siroe.cl';
       <div class="flex h-screen bg-gray-100 dark:bg-gray-800 font-sans text-gray-800 dark:text-gray-200">
         <!-- Sidebar -->
         <aside class="w-64 bg-siroe-maroon text-white flex-col hidden sm:flex">
-          <div class="flex items-center justify-center h-20 border-b border-white/20">
-            <h1 class="text-2xl font-bold tracking-wider">SIROE</h1>
+          <div class="flex items-center justify-center h-20 border-b border-white/20 px-4">
+            <img src="/assets/siroe-logo.png" alt="Siroe Logo" class="h-10 brightness-0 invert">
           </div>
           <nav class="flex-1 p-4">
             @if (currentUser()?.role === 'admin') {
@@ -224,7 +225,7 @@ export class AppComponent {
     if (identifier.toLowerCase() === ADMIN_EMAIL) {
       this.currentUser.set({ name: 'Admin', role: 'admin' });
       await this.refreshSurveys();
-      this.view.set('welcome');
+      this.view.set('dashboard');
     } else {
       this.currentUser.set({ name: identifier, role: 'respondent' });
       const [completed, allSurveys] = await Promise.all([
